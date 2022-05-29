@@ -1,0 +1,87 @@
+﻿@page "/Pagina2"
+
+@inject HttpClient _client;
+
+@using System.Net.Http.Json
+@using Clase3Corte.Data
+
+<MudButton OnClick="(args) => AgregarNuevoRegistro()" Variant="Variant.Filled" Color="Color.Primary">Añadir</MudButton>
+
+<MudDataGrid T="Libro" Items="@Libros" ReadOnly="@_readOnly" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+    StartedEditingItem="@StartedEditingItem" CancelledEditingItem="@CancelledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+    Bordered="true" Dense="true" EditTrigger="@(_editTriggerRowClick ? DataGridEditTrigger.OnRowClick : DataGridEditTrigger.Manual)">
+    <Columns>
+        <Column T="Libro" Field="Idlibro" Title="Id" IsEditable="false" />
+        <Column T="Libro" Field="Titulo" />
+        <Column T="Libro" Field="Editorial" />
+        <Column T="Libro" Field="Autor" />
+        <Column T="Libro" Field="Pagina" Title="Pagina" />
+        <Column T="Libro" Field="Descripcion" Title="Descripcion" />
+        <Column T="Libro" Hidden="@(_isCellEditMode || _readOnly || _editTriggerRowClick)" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Edit" OnClick="@context.Actions.StartEditingItem" />
+                 <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Delete" OnClick="(args)=> EliminarEvento(context.Item)" />
+            </CellTemplate>
+        </Column>
+    </Columns>
+</MudDataGrid>
+
+
+
+@code {
+    private IEnumerable<Libro> Libros = new List<Libro>();
+    private bool _readOnly;
+    private bool _isCellEditMode;
+    private List<string> _events = new();
+    private bool _editTriggerRowClick;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var elemento = new List<Libro>();
+        _client.BaseAddress = new Uri("https://localhost:7174/");
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "Biblioteca/ConsultarLibros");
+        var respuesta = await _client.SendAsync(requestMessage);
+
+        if(respuesta.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var responseBody = await respuesta.Content.ReadAsStringAsync();
+            var listasLibro = System.Text.Json.JsonSerializer.Deserialize<List<Libro>>(responseBody);
+            Libros = listasLibro;
+        }
+
+
+    }
+
+    void EliminarEvento(Libro item)
+    {
+
+    }
+
+    void AgregarNuevoRegistro()
+    {
+        var elemento = new Libro
+            {
+                Autor = "Autor Nuevo",
+                Titulo = "Hector Diaz",
+                Descripcion = "Descripcion"
+            };
+        ((List<Libro>)Libros).Add(elemento);
+        StateHasChanged();
+    }
+    // events
+    void StartedEditingItem(Libro item)
+    {
+        _events.Insert(0, $"Event = StartedEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CancelledEditingItem(Libro item)
+    {
+        _events.Insert(0, $"Event = CancelledEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+    //Este servirá para guardar o actualizar registros.
+    void CommittedItemChanges(Libro item)
+    {
+        _events.Insert(0, $"Event = CommittedItemChanges, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+}
